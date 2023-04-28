@@ -19,16 +19,17 @@ def cleanFiles(name):
 # RE 运行时错误,信息为运行时报错信息
 # TLE 超时
 # NT 没有测试用例，信息为0/0
-def run_test_case(code, task):
+# memory限制了执行时运行的内存使用大小，以mb为单位，只要数字
+def run_test_case(code, task, memory):
     path_to_test_case = "AtCoderTestCasesOfficial/" + task
-    input_files = os.listdir(path_to_test_case+"/in")
+    input_files = os.listdir(path_to_test_case + "/in")
     output_files = os.listdir(path_to_test_case + "/out")
     f_java = open("Main.java", 'a', encoding='utf-8')
     f_java.write(code)
     f_java.close()
     compile_result = subprocess.run(['javac', '-J-Dfile.encoding=UTF8', 'Main.java'], capture_output=True, text=True,
                                     encoding='utf-8')
-    assert len(input_files)==len(output_files)
+    assert len(input_files) == len(output_files)
     if compile_result.returncode != 0:
         print("Compilation Error!")
         cleanFiles("Main")
@@ -40,16 +41,17 @@ def run_test_case(code, task):
     else:
         num_test_case = (int)(len(input_files))
         count = 0
-        for input_file,output_file in zip(input_files,output_files):
-            input_path = path_to_test_case+"/in/"+input_file
+        for input_file, output_file in zip(input_files, output_files):
+            input_path = path_to_test_case + "/in/" + input_file
             output_path = path_to_test_case + "/out/" + output_file
             input = open(input_path, 'r').read()
             expect_output = open(output_path, 'r').read()
             # 运行Java代码并向标准输入流中传递数据
-            process = subprocess.Popen(['java', 'Main'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            process = subprocess.Popen(['java', '-Xmx{}m'.format(memory), 'Main'], stdin=subprocess.PIPE,
+                                       stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             try:
-                actual_output, errors = process.communicate(input=input.encode('utf-8'),timeout=10)
+                actual_output, errors = process.communicate(input=input.encode('utf-8'), timeout=10)
             except TimeoutError:
                 print("Time Limit Exceed Error!")
                 cleanFiles("Main")
@@ -107,4 +109,4 @@ public class Main {
 
 '''
     task = "abc296/B"
-    print(run_test_case(code, task))
+    print(run_test_case(code, task, 1024))
