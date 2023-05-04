@@ -18,9 +18,10 @@ def cleanFiles(name):
 # WA 有错误答案，信息为通过的测试用例数/总共测试用例数
 # RE 运行时错误,信息为运行时报错信息
 # TLE 超时
+# MLE 内存不够
 # NT 没有测试用例，信息为0/0
 # memory限制了执行时运行的内存使用大小，以mb为单位，只要数字
-def run_test_case(code, task, memory):
+def run_test_case(code, task, memory, time):
     path_to_test_case = "AtCoderTestCasesOfficial/" + task
     input_files = os.listdir(path_to_test_case + "/in")
     output_files = os.listdir(path_to_test_case + "/out")
@@ -51,15 +52,20 @@ def run_test_case(code, task, memory):
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE)
             try:
-                actual_output, errors = process.communicate(input=input.encode('utf-8'), timeout=10)
-            except TimeoutError:
+                actual_output, errors = process.communicate(input=input.encode('utf-8'), timeout=time)
+            except subprocess.TimeoutExpired:
                 print("Time Limit Exceed Error!")
                 cleanFiles("Main")
                 return {'TLE': 'Timeout!'}
             if errors.decode('utf-8') != '':
-                print("Runtime Error!")
-                cleanFiles("Main")
-                return {'RE': errors.decode('utf-8')}
+                if 'Invalid maximum heap size' in errors.decode('utf-8'):
+                    print('Memory Limit Exceed')
+                    cleanFiles("Main")
+                    return {'MLE': errors.decode('utf-8')}
+                else:
+                    print("Runtime Error!")
+                    cleanFiles("Main")
+                    return {'RE': errors.decode('utf-8')}
             if actual_output.decode(encoding='utf-8').strip() == expect_output.strip():
                 count += 1
             else:
@@ -109,4 +115,4 @@ public class Main {
 
 '''
     task = "abc296/B"
-    print(run_test_case(code, task, 1024))
+    print(run_test_case(code, task, 1,0.00001))
