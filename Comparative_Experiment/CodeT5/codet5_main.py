@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import argparse
+import json
 import logging
 import os
 import random
@@ -272,18 +273,22 @@ def test(args, model, tokenizer, test_dataset, best_threshold=0.5):
     df = pd.read_csv(args.test_data_file)
     source = np.array(df["source"]).tolist()
     target = np.array(df["target"]).tolist()
-    f = open('../data/raw_predictions/CodeT5/CodeT5_ori.txt', 'w', encoding='utf-8')
+    def write_json(data, path):
+        a_file = open(path, "w")
+        json.dump(data, a_file)
+        a_file.close()
+    generated = []
+    idx = 0
     for s, t, r, a in zip(source, target, raw_predictions, accuracy):
-        f.write("source:\n" + s + "\n")
-        f.write("target:\n" + t + "\n")
-        f.write("match:\n" + str(a) + "\n")
-        f.write("raw_predictions:\n")
-        for i in r:
-            f.write(i + "\n")
-    df["raw_predictions"] = raw_predictions
-    df["correctly_predicted"] = accuracy
-
-    df.to_csv(f"../data/raw_predictions/CodeT5/CodeT5_raw_preds.csv")
+        data = {}
+        data['idx'] = idx
+        data['src'] = s.strip()
+        data['tgt'] = t.strip()
+        data['match'] = a
+        data['generations'] = r
+        generated.append(data)
+        idx+=1
+    write_json(generated, os.path.join(args.output_dir, 'generation.json'))
 
 
 def main():
@@ -369,9 +374,7 @@ def main():
     # tokenizer = RobertaTokenizer.from_pretrained("Salesforce/codet5-base")
     # model = T5ForConditionalGeneration.from_pretrained("Salesforce/codet5-base")
     tokenizer = RobertaTokenizer.from_pretrained("Salesforce/codet5-base")
-    tokenizer.add_tokens(["<S2SV_StartBug>", "<S2SV_EndBug>", "<S2SV_blank>", "<S2SV_ModStart>", "<S2SV_ModEnd>"])
     model = T5ForConditionalGeneration.from_pretrained("Salesforce/codet5-base")
-    model.resize_token_embeddings(len(tokenizer))
     model.to(device)
     logger.info("Training/evaluation parameters %s", args)
     # Training
@@ -396,7 +399,7 @@ def main():
     if args.do_test:
         checkpoint_prefix = f'checkpoint-best-loss/{args.model_name}'
         output_dir = os.path.join(args.output_dir, '{}'.format(checkpoint_prefix))
-        model.load_state_dict(torch.load(output_dir, map_location=args.device))
+        model.load_state_dict(torch.load(output_dir, map_location=args.device), strict=False)
         model.to(args.device)
         test_dataset = TextDataset(tokenizer, args, file_type='test')
         test(args, model, tokenizer, test_dataset, best_threshold=0.5)
